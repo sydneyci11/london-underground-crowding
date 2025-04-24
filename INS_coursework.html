@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charest="utf-8">
+        <title>Crowding info at tube stations</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.0.1/dist/chart.umd.js"></script>
+
+        <script>
+            function updateCrowdingInfo(){
+                const xhr = new XMLHttpRequest();
+
+                let station = document.getElementById('station').value;
+                let day = document.getElementById('day').value;
+                let url = "https://api.tfl.gov.uk/crowding/" + station + "/" + day +"?app_key=9282a2060ffb4a6699264e2b354c7b0c";
+
+                xhr.onreadystatechange = function() {
+                    if(this.readyState == 4 && this.status == 200) {
+                        let response = JSON.parse(this.response);
+                        console.log(response)
+
+                        checkChartExist();
+
+                        // create arrays for barChart to store data
+                        let labels = [];
+                        let crowding = [];
+                        for(let i=0; i < response.timeBands.length; i++){
+                            labels.push(response.timeBands[i].timeBand);
+                            crowding.push(Math.round(response.timeBands[i].percentageOfBaseLine*100));  
+                        }
+
+                        // create a barChart to show the crowding data
+                        const ctx = document.getElementById("barChart");
+                        new Chart(ctx, {
+                            type:'bar',
+                            data: {
+                                labels:labels,
+                                datasets:[{
+                                    label: "Crowding",
+                                    data: crowding,
+                                }]
+                            },
+                            options: {
+                                scales: {
+
+                                    y: {
+                                        beginAtZero: true,
+                                        suggestedMax: 100
+                                    }
+                                }
+                            }
+                        });
+
+                        // show am peak time and pm peak time
+                        let amPeakTime = response.amPeakTimeBand;
+                        let pmPeakTime = response.pmPeakTimeBand;
+
+                        document.getElementById("amPeakTime").innerHTML = "AM Peak: " + amPeakTime;
+                        document.getElementById("pmPeakTime").innerHTML = "PM Peak: " + pmPeakTime;
+                        
+                        // show the crowding data below the table of crowding
+                        let crowdingData = "";
+                        document.getElementById("crowdingTable").innerHTML = "Time Band" + " " + "Crowding Percentage" + "<br>";
+                        for(let j=0; j < response.timeBands.length; j++){
+                            crowdingData = response.timeBands[j].timeBand + " " + Math.round(response.timeBands[j].percentageOfBaseLine*100); 
+                            document.getElementById("crowdingTable").append(crowdingData);
+                            document.getElementById("crowdingTable").innerHTML += "<br>";
+                        }
+                    }   
+                };
+                xhr.open('GET', url);
+                xhr.send();
+            }
+
+            // check if the chart is already used or not
+            // destroy the origin crowding chart in order to present new one
+            function checkChartExist(){
+                var chartExist = Chart.getChart("barChart");
+                if(chartExist != undefined){
+                    chartExist.destroy();
+                }
+            }
+        </script>
+    </head>
+
+    <body>
+        <h1>View crowding info at tube stations</h1>
+        <form>
+            <label for="station">Station: </label>
+            <select name="station" id="station">
+                <option value="940GZZLUPAC">Paddington</option>
+                <option value="940GZZLUKSX">King's Cross St Pancras</option>
+                <option value="940GZZLUEUS">Euston</option>
+                <option value="940GZZLUWLO">Waterloo</option>
+                <option value="940GZZLULNB">London Bridge</option>
+                <option value="940GZZLULVT">Liverpool Street</option>
+            </select>
+
+            <label for="dayOfweek">Day of week: </label>
+            <select name="day" id="day"> 
+                <option value="mon">Monday</option>
+                <option value="tue">Tuesday</option>
+                <option value="wed">Wednesday</option>
+                <option value="thu">Thursday</option>
+                <option value="fri">Friday</option>
+                <option value="sat">Saturday</option>
+                <option value="sun">Sunday</option>
+            </select>
+
+            <input type="button" value="View crowding info!" onclick="updateCrowdingInfo()"/>
+            
+            <div>
+                <canvas id="barChart"></canvas>
+            </div>
+
+            <div>
+                <span id="amPeakTime"></span> <br>
+                <span id="pmPeakTime"></span>
+            </div>
+
+        </form>
+
+        <h1>Table of crowding</h1>
+        <table id="crowdingTable">
+            <tbody>
+            </tbody>
+        </table>
+              
+    </body>
+
+</html>
